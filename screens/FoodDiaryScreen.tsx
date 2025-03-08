@@ -52,7 +52,6 @@ export default function FoodDiaryScreen() {
   };
 
   const navigateToAddFood = () => {
-    // Changed from 'Camera' to 'CameraScreen'
     navigation.navigate('CameraScreen');
   };
 
@@ -107,7 +106,7 @@ export default function FoodDiaryScreen() {
                 <Image source={{ uri: item.imageUri }} style={styles.foodImage} />
               ) : (
                 <View style={styles.placeholderImage}>
-                  <Ionicons name="restaurant" size={24} color="#aaa" />
+                  <Ionicons name="fast-food-outline" size={24} color="#aaa" />
                 </View>
               )}
               <View style={styles.foodInfo}>

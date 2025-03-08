@@ -46,7 +46,7 @@ export default function RecommendationScreen() {
             )}
             
             <View style={styles.reasonContainer}>
-              <Ionicons name="bulb-outline" size={20} color="#4CAF50" style={styles.reasonIcon} />
+              <Ionicons name="information-circle-outline" size={20} color="#4CAF50" style={styles.reasonIcon} />
               <Text style={styles.reasonText}>{item.reason}</Text>
             </View>
             
@@ -77,7 +77,7 @@ export default function RecommendationScreen() {
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons name="nutrition-outline" size={60} color="#ccc" />
+            <Ionicons name="fast-food-outline" size={60} color="#ccc" />
             <Text style={styles.emptyText}>No recommendations available</Text>
             <Text style={styles.emptySubtext}>Pull down to refresh</Text>
           </View>

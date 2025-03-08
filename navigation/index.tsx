@@ -14,7 +14,7 @@ export type RootStackParamList = {
   Main: undefined;
   FoodDetail: { foodId: string };
   AddFoodManually: undefined;
-  CameraScreen: undefined; // Changed from Camera to CameraScreen
+  CameraScreen: undefined;
 };
 
 export type TabParamList = {
@@ -31,17 +31,17 @@ function MainTabs() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
-          let iconName: keyof typeof Ionicons.glyphMap = 'help-outline';
-
+          // Use icon names that definitely exist in Ionicons
           if (route.name === 'Diary') {
-            iconName = focused ? 'journal' : 'journal-outline';
+            return <Ionicons name={focused ? 'book' : 'book-outline'} size={size} color={color} />;
           } else if (route.name === 'Camera') {
-            iconName = focused ? 'camera' : 'camera-outline';
+            return <Ionicons name={focused ? 'camera' : 'camera-outline'} size={size} color={color} />;
           } else if (route.name === 'Recommendations') {
-            iconName = focused ? 'nutrition' : 'nutrition-outline';
+            return <Ionicons name={focused ? 'restaurant' : 'restaurant-outline'} size={size} color={color} />;
           }
-
-          return <Ionicons name={iconName} size={size} color={color} />;
+          
+          // Default icon as fallback
+          return <Ionicons name="help-circle-outline" size={size} color={color} />;
         },
         tabBarActiveTintColor: '#4CAF50',
         tabBarInactiveTintColor: 'gray',

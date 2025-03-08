@@ -95,7 +95,6 @@ export default function CameraScreen() {
         setDetectedFood(null);
         
         // Navigate back to the diary
-        // Use goBack() instead of navigate to avoid navigation conflicts
         if (navigation.canGoBack()) {
           navigation.goBack();
         } else {
@@ -142,7 +141,7 @@ export default function CameraScreen() {
                 onPress={() => {
                   setType(type === CameraType.back ? CameraType.front : CameraType.back);
                 }}>
-                <Ionicons name="camera-reverse" size={30} color="white" />
+                <Ionicons name="sync-outline" size={30} color="white" />
               </TouchableOpacity>
             </View>
           </Camera>
@@ -151,7 +150,7 @@ export default function CameraScreen() {
               <Ionicons name="camera" size={36} color="white" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.galleryButton} onPress={pickImage}>
-              <Ionicons name="images" size={30} color="#4CAF50" />
+              <Ionicons name="image-outline" size={30} color="#4CAF50" />
             </TouchableOpacity>
           </View>
         </>
