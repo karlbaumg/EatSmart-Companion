@@ -34,6 +34,8 @@ export default function MealSuggestionsScreen() {
   const [mealComplete, setMealComplete] = useState(false);
   const [showMealPlan, setShowMealPlan] = useState(false);
   const position = useRef(new Animated.ValueXY()).current;
+  
+  // Fix the syntax error by properly initializing the rotation value
   const rotation = position.x.interpolate({
     inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
     outputRange: ['-10deg', '0deg', '10deg'],
@@ -81,7 +83,7 @@ export default function MealSuggestionsScreen() {
     }
   }, [selectedItems]);
 
-  const checkIfMealComplete() {
+  const checkIfMealComplete = () => {
     // This is where the AI would determine if the meal is complete
     // For this example, we'll use a simple rule: 
     // If the user has selected 3-5 items, there's a chance the meal is complete
