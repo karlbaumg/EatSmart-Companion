@@ -1,20 +1,50 @@
-import React from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ImageBackground } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, Text, TouchableOpacity, ImageBackground, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation';
 import { useFoodContext } from '../context/FoodContext';
 import { LinearGradient } from 'expo-linear-gradient';
+import { calculateRemainingCalories } from '../utils/openAiUtils';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export default function HomeScreen() {
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const { getNutritionSummary } = useFoodContext();
+  const [loading, setLoading] = useState(false);
+  const [calorieInfo, setCalorieInfo] = useState({
+    dailyCalorieGoal: 2000,
+    remainingCalories: 2000,
+    advice: "Balance your meals throughout the day for optimal nutrition."
+  });
   
   // Get today's nutrition summary
   const todaysSummary = getNutritionSummary(new Date());
+
+  // Calculate remaining calories when the component mounts or nutrition changes
+  useEffect(() => {
+    const fetchCalorieInfo = async () => {
+      setLoading(true);
+      try {
+        const result = await calculateRemainingCalories(todaysSummary);
+        setCalorieInfo(result);
+      } catch (error) {
+        console.error('Error calculating remaining calories:', error);
+        // Set default values if there's an error
+        setCalorieInfo({
+          dailyCalorieGoal: 2000,
+          remainingCalories: Math.max(0, 2000 - todaysSummary.totalCalories),
+          advice: "Try to balance your remaining calories with a mix of protein, healthy fats, and complex carbohydrates."
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchCalorieInfo();
+  }, [todaysSummary.totalCalories]);
 
   const navigateToCamera = () => {
     navigation.navigate('Camera');
@@ -78,6 +108,35 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
+      <View style={styles.calorieContainer}>
+        <View style={styles.calorieHeader}>
+          <Text style={styles.calorieTitle}>Calories Remaining</Text>
+          {loading && <ActivityIndicator size="small" color="#4CAF50" style={styles.loader} />}
+        </View>
+        
+        <View style={styles.calorieCalculation}>
+          <View style={styles.calorieItem}>
+            <Text style={styles.calorieValue}>{calorieInfo.dailyCalorieGoal}</Text>
+            <Text style={styles.calorieLabel}>Goal</Text>
+          </View>
+          <Text style={styles.calculationSymbol}>-</Text>
+          <View style={styles.calorieItem}>
+            <Text style={styles.calorieValue}>{todaysSummary.totalCalories}</Text>
+            <Text style={styles.calorieLabel}>Food</Text>
+          </View>
+          <Text style={styles.calculationSymbol}>=</Text>
+          <View style={[styles.calorieItem, styles.remainingItem]}>
+            <Text style={[styles.calorieValue, styles.remainingValue]}>{calorieInfo.remainingCalories}</Text>
+            <Text style={styles.calorieLabel}>Remaining</Text>
+          </View>
+        </View>
+        
+        <View style={styles.adviceContainer}>
+          <Ionicons name="bulb-outline" size={20} color="#4CAF50" style={styles.adviceIcon} />
+          <Text style={styles.adviceText}>{calorieInfo.advice}</Text>
+        </View>
+      </View>
+
       <View style={styles.summaryContainer}>
         <Text style={styles.summaryTitle}>Today's Nutrition</Text>
         <View style={styles.nutritionGrid}>
@@ -122,9 +181,9 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   card: {
-    height: 180,
+    height: 150,
     borderRadius: 15,
-    marginBottom: 20,
+    marginBottom: 15,
     overflow: 'hidden',
     elevation: 3,
     shadowColor: '#000',
@@ -152,17 +211,92 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cardTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
     color: 'white',
     marginTop: 10,
     textAlign: 'center',
   },
   cardSubtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: 'rgba(255,255,255,0.9)',
     textAlign: 'center',
     marginTop: 5,
+  },
+  calorieContainer: {
+    backgroundColor: 'white',
+    borderRadius: 15,
+    padding: 20,
+    marginHorizontal: 20,
+    marginBottom: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  calorieHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  calorieTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  loader: {
+    marginLeft: 10,
+  },
+  calorieCalculation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 15,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  calorieItem: {
+    alignItems: 'center',
+  },
+  calorieValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  remainingItem: {
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 15,
+    paddingVertical: 5,
+    borderRadius: 10,
+  },
+  remainingValue: {
+    color: '#4CAF50',
+  },
+  calorieLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  calculationSymbol: {
+    fontSize: 20,
+    color: '#999',
+    fontWeight: 'bold',
+  },
+  adviceContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  adviceIcon: {
+    marginRight: 10,
+    marginTop: 2,
+  },
+  adviceText: {
+    fontSize: 14,
+    color: '#666',
+    flex: 1,
+    lineHeight: 20,
   },
   summaryContainer: {
     backgroundColor: 'white',

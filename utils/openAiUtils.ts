@@ -1,4 +1,4 @@
-import { Food, Recommendation } from '../types';
+import { Food, Recommendation, NutritionSummary } from '../types';
 
 // Function to call OpenAI API
 export async function callOpenAI(prompt: string): Promise<any> {
@@ -147,6 +147,73 @@ export async function checkIfMealIsComplete(selectedItems: any[]): Promise<{ isC
     console.error('Error checking if meal is complete:', error);
     // Fallback to simple heuristic if the API call fails
     return fallbackMealCompletenessCheck(selectedItems);
+  }
+}
+
+// Calculate daily calorie goals and remaining calories
+export async function calculateRemainingCalories(
+  todayNutrition: NutritionSummary
+): Promise<{ 
+  dailyCalorieGoal: number; 
+  remainingCalories: number;
+  advice: string;
+}> {
+  try {
+    // Default values if AI fails
+    const defaultDailyCalories = 2000;
+    const remaining = Math.max(0, defaultDailyCalories - todayNutrition.totalCalories);
+    
+    // Create a prompt for the AI
+    const prompt = `
+    I've consumed the following nutrients today:
+    - Calories: ${todayNutrition.totalCalories}
+    - Protein: ${todayNutrition.totalProtein}g
+    - Carbs: ${todayNutrition.totalCarbs}g
+    - Fat: ${todayNutrition.totalFat}g
+
+    Based on this information:
+    1. What would be a reasonable daily calorie goal for an average adult?
+    2. How many calories should I consume for the rest of the day?
+    3. Give me a brief piece of advice about my remaining nutrition for today.
+
+    Format your response as a JSON object with: dailyCalorieGoal (number), remainingCalories (number), advice (string).
+    `;
+
+    // Call OpenAI API
+    const response = await callOpenAI(prompt);
+    
+    // Parse the JSON response
+    try {
+      // Extract JSON from the response (in case there's additional text)
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      } else {
+        return JSON.parse(response);
+      }
+    } catch (error) {
+      console.error('Error parsing OpenAI response for calorie goals:', error);
+      console.log('Raw response:', response);
+      
+      // Return default values if parsing fails
+      return {
+        dailyCalorieGoal: defaultDailyCalories,
+        remainingCalories: remaining,
+        advice: "Try to balance your remaining calories with a mix of protein, healthy fats, and complex carbohydrates."
+      };
+    }
+  } catch (error) {
+    console.error('Error calculating remaining calories:', error);
+    
+    // Calculate remaining calories based on default daily goal
+    const defaultDailyCalories = 2000;
+    const remaining = Math.max(0, defaultDailyCalories - todayNutrition.totalCalories);
+    
+    return {
+      dailyCalorieGoal: defaultDailyCalories,
+      remainingCalories: remaining,
+      advice: "Try to balance your remaining calories with a mix of protein, healthy fats, and complex carbohydrates."
+    };
   }
 }
 
