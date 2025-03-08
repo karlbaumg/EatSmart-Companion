@@ -14,7 +14,7 @@ export type RootStackParamList = {
   Main: undefined;
   FoodDetail: { foodId: string };
   AddFoodManually: undefined;
-  Camera: undefined;
+  CameraScreen: undefined; // Changed from Camera to CameraScreen
 };
 
 export type TabParamList = {
@@ -87,7 +87,7 @@ export default function Navigation() {
           options={{ title: 'Add Food' }}
         />
         <Stack.Screen 
-          name="Camera" 
+          name="CameraScreen" 
           component={CameraScreen} 
           options={{ title: 'Take Photo of Food' }}
         />

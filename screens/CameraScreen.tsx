@@ -95,7 +95,12 @@ export default function CameraScreen() {
         setDetectedFood(null);
         
         // Navigate back to the diary
-        navigation.navigate('Main');
+        // Use goBack() instead of navigate to avoid navigation conflicts
+        if (navigation.canGoBack()) {
+          navigation.goBack();
+        } else {
+          navigation.navigate('Main');
+        }
         
         // Show success message
         Alert.alert('Success', 'Food logged successfully!');

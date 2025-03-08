@@ -52,7 +52,8 @@ export default function FoodDiaryScreen() {
   };
 
   const navigateToAddFood = () => {
-    navigation.navigate('Camera');
+    // Changed from 'Camera' to 'CameraScreen'
+    navigation.navigate('CameraScreen');
   };
 
   const navigateToFoodDetail = (foodId: string) => {
