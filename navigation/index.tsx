@@ -3,24 +3,24 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 
+import HomeScreen from '../screens/HomeScreen';
 import CameraScreen from '../screens/CameraScreen';
 import FoodDiaryScreen from '../screens/FoodDiaryScreen';
-import RecommendationScreen from '../screens/RecommendationScreen';
+import MealSuggestionsScreen from '../screens/MealSuggestionsScreen';
 import FoodDetailScreen from '../screens/FoodDetailScreen';
-import AddFoodManuallyScreen from '../screens/AddFoodManuallyScreen';
 
 // Define the types for our navigation
 export type RootStackParamList = {
   Main: undefined;
+  Camera: undefined;
+  MealSuggestions: undefined;
+  FoodDiary: undefined;
   FoodDetail: { foodId: string };
-  AddFoodManually: undefined;
-  CameraScreen: undefined;
 };
 
 export type TabParamList = {
+  Home: undefined;
   Diary: undefined;
-  Camera: undefined;
-  Recommendations: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -31,13 +31,10 @@ function MainTabs() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
-          // Use icon names that definitely exist in Ionicons
-          if (route.name === 'Diary') {
+          if (route.name === 'Home') {
+            return <Ionicons name={focused ? 'home' : 'home-outline'} size={size} color={color} />;
+          } else if (route.name === 'Diary') {
             return <Ionicons name={focused ? 'book' : 'book-outline'} size={size} color={color} />;
-          } else if (route.name === 'Camera') {
-            return <Ionicons name={focused ? 'camera' : 'camera-outline'} size={size} color={color} />;
-          } else if (route.name === 'Recommendations') {
-            return <Ionicons name={focused ? 'restaurant' : 'restaurant-outline'} size={size} color={color} />;
           }
           
           // Default icon as fallback
@@ -46,22 +43,25 @@ function MainTabs() {
         tabBarActiveTintColor: '#4CAF50',
         tabBarInactiveTintColor: 'gray',
         headerShown: true,
+        tabBarStyle: {
+          paddingBottom: 5,
+          height: 60,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          marginBottom: 5,
+        },
       })}
     >
       <Tab.Screen 
+        name="Home" 
+        component={HomeScreen} 
+        options={{ title: 'Home' }}
+      />
+      <Tab.Screen 
         name="Diary" 
         component={FoodDiaryScreen} 
-        options={{ title: 'Food Diary' }}
-      />
-      <Tab.Screen 
-        name="Camera" 
-        component={CameraScreen} 
-        options={{ title: 'Log Food' }}
-      />
-      <Tab.Screen 
-        name="Recommendations" 
-        component={RecommendationScreen} 
-        options={{ title: 'What to Eat?' }}
+        options={{ title: 'Food History' }}
       />
     </Tab.Navigator>
   );
@@ -77,19 +77,24 @@ export default function Navigation() {
           options={{ headerShown: false }}
         />
         <Stack.Screen 
+          name="Camera" 
+          component={CameraScreen} 
+          options={{ title: 'Take Photo of Food' }}
+        />
+        <Stack.Screen 
+          name="MealSuggestions" 
+          component={MealSuggestionsScreen} 
+          options={{ title: 'Meal Suggestions', headerShown: false }}
+        />
+        <Stack.Screen 
+          name="FoodDiary" 
+          component={FoodDiaryScreen} 
+          options={{ title: 'Food History' }}
+        />
+        <Stack.Screen 
           name="FoodDetail" 
           component={FoodDetailScreen} 
           options={{ title: 'Food Details' }}
-        />
-        <Stack.Screen 
-          name="AddFoodManually" 
-          component={AddFoodManuallyScreen} 
-          options={{ title: 'Add Food' }}
-        />
-        <Stack.Screen 
-          name="CameraScreen" 
-          component={CameraScreen} 
-          options={{ title: 'Take Photo of Food' }}
         />
       </Stack.Navigator>
     </NavigationContainer>
