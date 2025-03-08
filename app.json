@@ -19,25 +19,25 @@
     "android": {
       "package": "com.appacella.userapp",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/appacella-logo-white.png",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       }
     },
     "web": {
       "bundler": "metro",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/favicon.png"
     },
     "plugins": [
       [
         "expo-router",
         {
-          "origin": "https://pool-ecs-fargate-mvp-ssh-task-cd887676.dev.appacella.com"
+          "origin": "https://project-95dbccc0.dev.appacella.com"
         }
       ],
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
