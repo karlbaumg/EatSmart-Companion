@@ -8,7 +8,8 @@ import {
   PanResponder,
   Dimensions,
   ActivityIndicator,
-  ImageBackground
+  ScrollView,
+  Modal
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,6 +30,9 @@ export default function MealSuggestionsScreen() {
   const { recommendations, refreshRecommendations } = useFoodContext();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [selectedItems, setSelectedItems] = useState<any[]>([]);
+  const [mealComplete, setMealComplete] = useState(false);
+  const [showMealPlan, setShowMealPlan] = useState(false);
   const position = useRef(new Animated.ValueXY()).current;
   const rotation = position.x.interpolate({
     inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
@@ -64,8 +68,52 @@ export default function MealSuggestionsScreen() {
     setLoading(true);
     refreshRecommendations();
     setCurrentIndex(0);
+    setSelectedItems([]);
+    setMealComplete(false);
+    setShowMealPlan(false);
     setLoading(false);
   }, []);
+
+  // Check if the meal is complete after each selection
+  useEffect(() => {
+    if (selectedItems.length > 0) {
+      checkIfMealComplete();
+    }
+  }, [selectedItems]);
+
+  const checkIfMealComplete() {
+    // This is where the AI would determine if the meal is complete
+    // For this example, we'll use a simple rule: 
+    // If the user has selected 3-5 items, there's a chance the meal is complete
+    
+    if (selectedItems.length >= 3) {
+      // Calculate total nutrients
+      const totalNutrients = selectedItems.reduce(
+        (acc, item) => {
+          return {
+            calories: acc.calories + item.calories,
+            protein: acc.protein + item.protein,
+            carbs: acc.carbs + item.carbs,
+            fat: acc.fat + item.fat,
+          };
+        },
+        { calories: 0, protein: 0, carbs: 0, fat: 0 }
+      );
+      
+      // Check if the meal has a good balance of nutrients
+      // This is a simplified version of what an AI would do
+      const hasEnoughCalories = totalNutrients.calories >= 500;
+      const hasEnoughProtein = totalNutrients.protein >= 20;
+      const hasEnoughCarbs = totalNutrients.carbs >= 40;
+      const hasEnoughFat = totalNutrients.fat >= 15;
+      
+      // If the meal has enough of each nutrient, or if the user has selected 5 items, mark as complete
+      if ((hasEnoughCalories && hasEnoughProtein && hasEnoughCarbs && hasEnoughFat) || selectedItems.length >= 5) {
+        setMealComplete(true);
+        setShowMealPlan(true);
+      }
+    }
+  };
 
   const panResponder = useRef(
     PanResponder.create({
@@ -97,18 +145,16 @@ export default function MealSuggestionsScreen() {
   const onSwipeComplete = (direction: 'right' | 'left') => {
     const item = recommendations[currentIndex];
     
-    // Here you could save the user's preference
-    // For example, if they swiped right (liked), you could save this meal as a favorite
+    // If swiped right (liked), add to selected items
+    if (direction === 'right') {
+      setSelectedItems(prev => [...prev, item]);
+    }
     
     position.setValue({ x: 0, y: 0 });
     setCurrentIndex(prevIndex => prevIndex + 1);
     
-    // If we've gone through all recommendations, refresh or go back
+    // If we've gone through all recommendations, refresh
     if (currentIndex >= recommendations.length - 1) {
-      // Option 1: Go back to home
-      // navigation.goBack();
-      
-      // Option 2: Refresh recommendations
       setLoading(true);
       refreshRecommendations();
       setCurrentIndex(0);
@@ -136,12 +182,29 @@ export default function MealSuggestionsScreen() {
     navigation.goBack();
   };
 
+  const handleCloseMealPlan = () => {
+    setShowMealPlan(false);
+  };
+
+  const handleStartOver = () => {
+    setSelectedItems([]);
+    setMealComplete(false);
+    setCurrentIndex(0);
+  };
+
+  const handleSaveMealPlan = () => {
+    // Here you would save the meal plan to the user's history
+    // For now, we'll just go back to the home screen
+    setShowMealPlan(false);
+    navigation.goBack();
+  };
+
   const renderNoMoreCards = () => {
     return (
       <View style={styles.noMoreCardsContainer}>
         <Ionicons name="restaurant-outline" size={80} color="#ccc" />
-        <Text style={styles.noMoreCardsText}>No More Suggestions</Text>
-        <Text style={styles.noMoreCardsSubtext}>We're refreshing your recommendations...</Text>
+        <Text style={styles.noMoreCardsText}>No More Food Items</Text>
+        <Text style={styles.noMoreCardsSubtext}>We're refreshing your options...</Text>
         <TouchableOpacity 
           style={styles.refreshButton}
           onPress={() => {
@@ -151,7 +214,7 @@ export default function MealSuggestionsScreen() {
             setLoading(false);
           }}
         >
-          <Text style={styles.refreshButtonText}>Refresh Suggestions</Text>
+          <Text style={styles.refreshButtonText}>Refresh Options</Text>
         </TouchableOpacity>
       </View>
     );
@@ -224,7 +287,7 @@ export default function MealSuggestionsScreen() {
               { opacity: likeOpacity }
             ]}
           >
-            <Text style={styles.likeText}>LIKE</Text>
+            <Text style={styles.likeText}>ADD</Text>
           </Animated.View>
 
           <Animated.View 
@@ -233,7 +296,7 @@ export default function MealSuggestionsScreen() {
               { opacity: dislikeOpacity }
             ]}
           >
-            <Text style={styles.dislikeText}>NOPE</Text>
+            <Text style={styles.dislikeText}>SKIP</Text>
           </Animated.View>
         </Animated.View>
       );
@@ -300,11 +363,151 @@ export default function MealSuggestionsScreen() {
     return null;
   };
 
+  const renderMealPlanModal = () => {
+    // Calculate total nutrients
+    const totalNutrients = selectedItems.reduce(
+      (acc, item) => {
+        return {
+          calories: acc.calories + item.calories,
+          protein: acc.protein + item.protein,
+          carbs: acc.carbs + item.carbs,
+          fat: acc.fat + item.fat,
+        };
+      },
+      { calories: 0, protein: 0, carbs: 0, fat: 0 }
+    );
+
+    return (
+      <Modal
+        visible={showMealPlan}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={handleCloseMealPlan}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Your Meal Plan</Text>
+              <TouchableOpacity onPress={handleCloseMealPlan}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.mealSummary}>
+              <Text style={styles.mealSummaryTitle}>Nutrition Summary</Text>
+              <View style={styles.nutritionGrid}>
+                <View style={styles.nutritionSummaryItem}>
+                  <Text style={styles.nutritionSummaryValue}>{totalNutrients.calories}</Text>
+                  <Text style={styles.nutritionSummaryLabel}>Calories</Text>
+                </View>
+                <View style={styles.nutritionSummaryItem}>
+                  <Text style={styles.nutritionSummaryValue}>{totalNutrients.protein}g</Text>
+                  <Text style={styles.nutritionSummaryLabel}>Protein</Text>
+                </View>
+                <View style={styles.nutritionSummaryItem}>
+                  <Text style={styles.nutritionSummaryValue}>{totalNutrients.carbs}g</Text>
+                  <Text style={styles.nutritionSummaryLabel}>Carbs</Text>
+                </View>
+                <View style={styles.nutritionSummaryItem}>
+                  <Text style={styles.nutritionSummaryValue}>{totalNutrients.fat}g</Text>
+                  <Text style={styles.nutritionSummaryLabel}>Fat</Text>
+                </View>
+              </View>
+            </View>
+
+            <Text style={styles.selectedItemsTitle}>Selected Items</Text>
+            <ScrollView style={styles.selectedItemsList}>
+              {selectedItems.map((item, index) => (
+                <View key={index} style={styles.selectedItemCard}>
+                  <View style={styles.selectedItemImageContainer}>
+                    {item.imageUri ? (
+                      <Image
+                        source={{ uri: item.imageUri }}
+                        style={styles.selectedItemImage}
+                        contentFit="cover"
+                      />
+                    ) : (
+                      <View style={styles.selectedItemPlaceholder}>
+                        <Ionicons name="fast-food-outline" size={24} color="#ccc" />
+                      </View>
+                    )}
+                  </View>
+                  <View style={styles.selectedItemDetails}>
+                    <Text style={styles.selectedItemName}>{item.foodName}</Text>
+                    <Text style={styles.selectedItemNutrition}>
+                      {item.calories} cal · {item.protein}g protein · {item.carbs}g carbs · {item.fat}g fat
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+
+            <View style={styles.aiMessage}>
+              <Ionicons name="checkmark-circle" size={24} color="#4CAF50" style={styles.aiIcon} />
+              <Text style={styles.aiMessageText}>
+                This meal plan is balanced and meets your nutritional needs!
+              </Text>
+            </View>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={styles.startOverButton} onPress={handleStartOver}>
+                <Text style={styles.startOverButtonText}>Start Over</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.savePlanButton} onPress={handleSaveMealPlan}>
+                <Text style={styles.savePlanButtonText}>Save Plan</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
+  const renderSelectedItemsPreview = () => {
+    if (selectedItems.length === 0) return null;
+
+    return (
+      <View style={styles.selectedItemsPreview}>
+        <Text style={styles.selectedItemsCount}>
+          {selectedItems.length} {selectedItems.length === 1 ? 'item' : 'items'} selected
+        </Text>
+        <View style={styles.selectedItemsImages}>
+          {selectedItems.slice(0, 3).map((item, index) => (
+            <View key={index} style={[styles.selectedItemPreviewImage, { zIndex: 3 - index, marginLeft: index > 0 ? -15 : 0 }]}>
+              {item.imageUri ? (
+                <Image
+                  source={{ uri: item.imageUri }}
+                  style={styles.previewImage}
+                  contentFit="cover"
+                />
+              ) : (
+                <View style={styles.previewPlaceholder}>
+                  <Ionicons name="fast-food-outline" size={16} color="#aaa" />
+                </View>
+              )}
+            </View>
+          ))}
+          {selectedItems.length > 3 && (
+            <View style={[styles.selectedItemPreviewImage, styles.moreItemsIndicator, { marginLeft: -15 }]}>
+              <Text style={styles.moreItemsText}>+{selectedItems.length - 3}</Text>
+            </View>
+          )}
+        </View>
+        <TouchableOpacity 
+          style={styles.viewPlanButton} 
+          onPress={() => setShowMealPlan(true)}
+        >
+          <Text style={styles.viewPlanButtonText}>View</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#4CAF50" />
-        <Text style={styles.loadingText}>Loading meal suggestions...</Text>
+        <Text style={styles.loadingText}>Loading food options...</Text>
       </View>
     );
   }
@@ -315,9 +518,11 @@ export default function MealSuggestionsScreen() {
         <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
           <Ionicons name="chevron-back" size={28} color="#333" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Meal Suggestions</Text>
+        <Text style={styles.headerTitle}>Build Your Meal</Text>
         <View style={styles.placeholder} />
       </View>
+
+      {renderSelectedItemsPreview()}
 
       <View style={styles.cardsContainer}>
         {recommendations.length > currentIndex ? (
@@ -337,6 +542,8 @@ export default function MealSuggestionsScreen() {
           </TouchableOpacity>
         </View>
       )}
+
+      {renderMealPlanModal()}
     </View>
   );
 }
@@ -367,6 +574,64 @@ const styles = StyleSheet.create({
   },
   placeholder: {
     width: 38, // Same width as the back button for balance
+  },
+  selectedItemsPreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'white',
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  selectedItemsCount: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  selectedItemsImages: {
+    flexDirection: 'row',
+    flex: 1,
+    justifyContent: 'center',
+  },
+  selectedItemPreviewImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: 'white',
+    overflow: 'hidden',
+  },
+  previewImage: {
+    width: '100%',
+    height: '100%',
+  },
+  previewPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  moreItemsIndicator: {
+    backgroundColor: '#4CAF50',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  moreItemsText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  viewPlanButton: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 6,
+    paddingHorizontal: 15,
+    borderRadius: 15,
+  },
+  viewPlanButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
   },
   cardsContainer: {
     flex: 1,
@@ -554,5 +819,162 @@ const styles = StyleSheet.create({
     marginTop: 20,
     fontSize: 18,
     color: '#666',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 30,
+    height: '90%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  mealSummary: {
+    padding: 20,
+    backgroundColor: '#f9f9f9',
+  },
+  mealSummaryTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 15,
+  },
+  nutritionGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  nutritionSummaryItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  nutritionSummaryValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#4CAF50',
+  },
+  nutritionSummaryLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  selectedItemsTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    padding: 20,
+    paddingBottom: 10,
+  },
+  selectedItemsList: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  selectedItemCard: {
+    flexDirection: 'row',
+    backgroundColor: 'white',
+    borderRadius: 10,
+    marginBottom: 10,
+    padding: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  selectedItemImageContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 10,
+    overflow: 'hidden',
+    marginRight: 15,
+  },
+  selectedItemImage: {
+    width: '100%',
+    height: '100%',
+  },
+  selectedItemPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectedItemDetails: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  selectedItemName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 5,
+  },
+  selectedItemNutrition: {
+    fontSize: 14,
+    color: '#666',
+  },
+  aiMessage: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F5E9',
+    padding: 15,
+    marginHorizontal: 20,
+    marginVertical: 15,
+    borderRadius: 10,
+  },
+  aiIcon: {
+    marginRight: 10,
+  },
+  aiMessageText: {
+    fontSize: 14,
+    color: '#333',
+    flex: 1,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+  },
+  startOverButton: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+    paddingVertical: 12,
+    borderRadius: 25,
+    marginRight: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  startOverButtonText: {
+    color: '#666',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  savePlanButton: {
+    flex: 1,
+    backgroundColor: '#4CAF50',
+    paddingVertical: 12,
+    borderRadius: 25,
+    marginLeft: 10,
+    alignItems: 'center',
+  },
+  savePlanButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
