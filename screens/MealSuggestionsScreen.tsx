@@ -9,7 +9,8 @@ import {
   Dimensions,
   ActivityIndicator,
   ScrollView,
-  Modal
+  Modal,
+  Alert
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +19,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation';
 import { useFoodContext } from '../context/FoodContext';
 import { LinearGradient } from 'expo-linear-gradient';
+import { checkIfMealIsComplete } from '../utils/openAiUtils';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const SWIPE_THRESHOLD = 0.25 * SCREEN_WIDTH;
@@ -33,9 +35,10 @@ export default function MealSuggestionsScreen() {
   const [selectedItems, setSelectedItems] = useState<any[]>([]);
   const [mealComplete, setMealComplete] = useState(false);
   const [showMealPlan, setShowMealPlan] = useState(false);
+  const [aiFeedback, setAiFeedback] = useState("Your meal plan is being analyzed...");
+  const [checkingMeal, setCheckingMeal] = useState(false);
   const position = useRef(new Animated.ValueXY()).current;
   
-  // Fix the syntax error by properly initializing the rotation value
   const rotation = position.x.interpolate({
     inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
     outputRange: ['-10deg', '0deg', '10deg'],
@@ -67,53 +70,56 @@ export default function MealSuggestionsScreen() {
   });
 
   useEffect(() => {
-    setLoading(true);
-    refreshRecommendations();
-    setCurrentIndex(0);
-    setSelectedItems([]);
-    setMealComplete(false);
-    setShowMealPlan(false);
-    setLoading(false);
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        await refreshRecommendations();
+      } catch (error) {
+        console.error('Error loading recommendations:', error);
+        Alert.alert('Error', 'Failed to load food recommendations. Please try again.');
+      } finally {
+        setCurrentIndex(0);
+        setSelectedItems([]);
+        setMealComplete(false);
+        setShowMealPlan(false);
+        setLoading(false);
+      }
+    };
+    
+    loadData();
   }, []);
 
   // Check if the meal is complete after each selection
   useEffect(() => {
     if (selectedItems.length > 0) {
-      checkIfMealComplete();
+      checkMealCompleteness();
     }
   }, [selectedItems]);
 
-  const checkIfMealComplete = () => {
-    // This is where the AI would determine if the meal is complete
-    // For this example, we'll use a simple rule: 
-    // If the user has selected 3-5 items, there's a chance the meal is complete
+  const checkMealCompleteness = async () => {
+    // Only check if we have at least 2 items
+    if (selectedItems.length < 2) return;
     
-    if (selectedItems.length >= 3) {
-      // Calculate total nutrients
-      const totalNutrients = selectedItems.reduce(
-        (acc, item) => {
-          return {
-            calories: acc.calories + item.calories,
-            protein: acc.protein + item.protein,
-            carbs: acc.carbs + item.carbs,
-            fat: acc.fat + item.fat,
-          };
-        },
-        { calories: 0, protein: 0, carbs: 0, fat: 0 }
-      );
+    setCheckingMeal(true);
+    try {
+      // Use OpenAI to check if the meal is complete
+      const result = await checkIfMealIsComplete(selectedItems);
+      setAiFeedback(result.feedback);
       
-      // Check if the meal has a good balance of nutrients
-      // This is a simplified version of what an AI would do
-      const hasEnoughCalories = totalNutrients.calories >= 500;
-      const hasEnoughProtein = totalNutrients.protein >= 20;
-      const hasEnoughCarbs = totalNutrients.carbs >= 40;
-      const hasEnoughFat = totalNutrients.fat >= 15;
-      
-      // If the meal has enough of each nutrient, or if the user has selected 5 items, mark as complete
-      if ((hasEnoughCalories && hasEnoughProtein && hasEnoughCarbs && hasEnoughFat) || selectedItems.length >= 5) {
+      if (result.isComplete) {
         setMealComplete(true);
         setShowMealPlan(true);
       }
+    } catch (error) {
+      console.error('Error checking meal completeness:', error);
+      // Fallback to simple check if AI fails
+      if (selectedItems.length >= 5) {
+        setMealComplete(true);
+        setAiFeedback("This meal plan contains a good variety of foods!");
+        setShowMealPlan(true);
+      }
+    } finally {
+      setCheckingMeal(false);
     }
   };
 
@@ -158,9 +164,17 @@ export default function MealSuggestionsScreen() {
     // If we've gone through all recommendations, refresh
     if (currentIndex >= recommendations.length - 1) {
       setLoading(true);
-      refreshRecommendations();
-      setCurrentIndex(0);
-      setLoading(false);
+      refreshRecommendations()
+        .then(() => {
+          setCurrentIndex(0);
+        })
+        .catch(error => {
+          console.error('Error refreshing recommendations:', error);
+          Alert.alert('Error', 'Failed to load more food options. Please try again.');
+        })
+        .finally(() => {
+          setLoading(false);
+        });
     }
   };
 
@@ -192,6 +206,7 @@ export default function MealSuggestionsScreen() {
     setSelectedItems([]);
     setMealComplete(false);
     setCurrentIndex(0);
+    setShowMealPlan(false);
   };
 
   const handleSaveMealPlan = () => {
@@ -211,9 +226,17 @@ export default function MealSuggestionsScreen() {
           style={styles.refreshButton}
           onPress={() => {
             setLoading(true);
-            refreshRecommendations();
-            setCurrentIndex(0);
-            setLoading(false);
+            refreshRecommendations()
+              .then(() => {
+                setCurrentIndex(0);
+              })
+              .catch(error => {
+                console.error('Error refreshing recommendations:', error);
+                Alert.alert('Error', 'Failed to refresh food options. Please try again.');
+              })
+              .finally(() => {
+                setLoading(false);
+              });
           }}
         >
           <Text style={styles.refreshButtonText}>Refresh Options</Text>
@@ -445,17 +468,38 @@ export default function MealSuggestionsScreen() {
             </ScrollView>
 
             <View style={styles.aiMessage}>
-              <Ionicons name="checkmark-circle" size={24} color="#4CAF50" style={styles.aiIcon} />
-              <Text style={styles.aiMessageText}>
-                This meal plan is balanced and meets your nutritional needs!
-              </Text>
+              {checkingMeal ? (
+                <View style={styles.aiAnalyzing}>
+                  <ActivityIndicator size="small" color="#4CAF50" />
+                  <Text style={styles.aiMessageText}>Analyzing your meal plan...</Text>
+                </View>
+              ) : (
+                <>
+                  <Ionicons 
+                    name={mealComplete ? "checkmark-circle" : "information-circle"} 
+                    size={24} 
+                    color={mealComplete ? "#4CAF50" : "#FF9800"} 
+                    style={styles.aiIcon} 
+                  />
+                  <Text style={styles.aiMessageText}>
+                    {aiFeedback}
+                  </Text>
+                </>
+              )}
             </View>
 
             <View style={styles.modalButtons}>
               <TouchableOpacity style={styles.startOverButton} onPress={handleStartOver}>
                 <Text style={styles.startOverButtonText}>Start Over</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.savePlanButton} onPress={handleSaveMealPlan}>
+              <TouchableOpacity 
+                style={[
+                  styles.savePlanButton,
+                  !mealComplete && styles.savePlanButtonDisabled
+                ]} 
+                onPress={handleSaveMealPlan}
+                disabled={!mealComplete}
+              >
                 <Text style={styles.savePlanButtonText}>Save Plan</Text>
               </TouchableOpacity>
             </View>
@@ -938,6 +982,10 @@ const styles = StyleSheet.create({
     marginVertical: 15,
     borderRadius: 10,
   },
+  aiAnalyzing: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   aiIcon: {
     marginRight: 10,
   },
@@ -945,6 +993,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#333',
     flex: 1,
+    marginLeft: 10,
   },
   modalButtons: {
     flexDirection: 'row',
@@ -973,6 +1022,9 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     marginLeft: 10,
     alignItems: 'center',
+  },
+  savePlanButtonDisabled: {
+    backgroundColor: '#A5D6A7',
   },
   savePlanButtonText: {
     color: 'white',

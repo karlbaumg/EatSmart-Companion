@@ -1,18 +1,18 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Food, FoodLog, Recommendation, NutritionSummary } from '../types';
 import { mockFoods, mockFoodLogs } from '../data/mockData';
-import { generateRecommendations } from '../utils/aiUtils';
+import { generateAIRecommendations } from '../utils/openAiUtils';
 
 interface FoodContextType {
   foods: Food[];
   foodLogs: FoodLog[];
   recommendations: Recommendation[];
-  addFood: (food: Omit<Food, 'id'>) => void;
+  addFood: (food: Omit<Food, 'id'>) => string;
   logFood: (foodId: string, mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', quantity: number) => void;
   getFoodById: (id: string) => Food | undefined;
   getFoodsByDate: (date: Date) => Food[];
   getNutritionSummary: (date: Date) => NutritionSummary;
-  refreshRecommendations: () => void;
+  refreshRecommendations: () => Promise<void>;
 }
 
 const FoodContext = createContext<FoodContextType | undefined>(undefined);
@@ -33,11 +33,12 @@ export const FoodProvider: React.FC<FoodProviderProps> = ({ children }) => {
   const [foods, setFoods] = useState<Food[]>(mockFoods);
   const [foodLogs, setFoodLogs] = useState<FoodLog[]>(mockFoodLogs);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
 
   // Generate initial recommendations
   useEffect(() => {
     refreshRecommendations();
-  }, [foodLogs]);
+  }, []);
 
   const addFood = (food: Omit<Food, 'id'>) => {
     const newFood: Food = {
@@ -57,6 +58,9 @@ export const FoodProvider: React.FC<FoodProviderProps> = ({ children }) => {
       quantity,
     };
     setFoodLogs((prevLogs) => [...prevLogs, newFoodLog]);
+    
+    // Refresh recommendations after logging new food
+    refreshRecommendations();
   };
 
   const getFoodById = (id: string) => {
@@ -101,12 +105,21 @@ export const FoodProvider: React.FC<FoodProviderProps> = ({ children }) => {
     );
   };
 
-  const refreshRecommendations = () => {
-    // Get today's foods
-    const todayFoods = getFoodsByDate(new Date());
-    // Generate recommendations based on what's been eaten today
-    const newRecommendations = generateRecommendations(todayFoods);
-    setRecommendations(newRecommendations);
+  const refreshRecommendations = async () => {
+    setIsLoadingRecommendations(true);
+    try {
+      // Get today's foods
+      const todayFoods = getFoodsByDate(new Date());
+      
+      // Generate AI-powered recommendations based on what's been eaten today
+      const newRecommendations = await generateAIRecommendations(todayFoods);
+      setRecommendations(newRecommendations);
+    } catch (error) {
+      console.error('Error refreshing recommendations:', error);
+      // If there's an error, we'll keep the existing recommendations
+    } finally {
+      setIsLoadingRecommendations(false);
+    }
   };
 
   return (
