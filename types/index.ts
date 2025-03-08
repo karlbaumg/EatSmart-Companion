@@ -35,3 +35,24 @@ export interface NutritionSummary {
   totalCarbs: number;
   totalFat: number;
 }
+
+export interface MealPlanItem {
+  id: string;
+  foodName: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  imageUri?: string;
+}
+
+export interface SavedMealPlan {
+  id: string;
+  name: string;
+  date: Date;
+  mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+  items: MealPlanItem[];
+  photoUri?: string;
+  aiFeedback: string;
+  nutritionSummary: NutritionSummary;
+}

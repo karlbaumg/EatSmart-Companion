@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Food, FoodLog, Recommendation, NutritionSummary } from '../types';
+import { Food, FoodLog, Recommendation, NutritionSummary, SavedMealPlan, MealPlanItem } from '../types';
 import { mockFoods, mockFoodLogs } from '../data/mockData';
 import { generateAIRecommendations } from '../utils/openAiUtils';
 
@@ -7,12 +7,23 @@ interface FoodContextType {
   foods: Food[];
   foodLogs: FoodLog[];
   recommendations: Recommendation[];
+  savedMealPlans: SavedMealPlan[];
   addFood: (food: Omit<Food, 'id'>) => string;
   logFood: (foodId: string, mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', quantity: number) => void;
   getFoodById: (id: string) => Food | undefined;
   getFoodsByDate: (date: Date) => Food[];
   getNutritionSummary: (date: Date) => NutritionSummary;
   refreshRecommendations: () => Promise<void>;
+  saveMealPlan: (
+    name: string, 
+    mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', 
+    items: MealPlanItem[], 
+    photoUri?: string,
+    aiFeedback?: string
+  ) => string;
+  getSavedMealPlans: () => SavedMealPlan[];
+  getSavedMealPlanById: (id: string) => SavedMealPlan | undefined;
+  updateMealPlanPhoto: (mealPlanId: string, photoUri: string) => void;
 }
 
 const FoodContext = createContext<FoodContextType | undefined>(undefined);
@@ -33,6 +44,7 @@ export const FoodProvider: React.FC<FoodProviderProps> = ({ children }) => {
   const [foods, setFoods] = useState<Food[]>(mockFoods);
   const [foodLogs, setFoodLogs] = useState<FoodLog[]>(mockFoodLogs);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [savedMealPlans, setSavedMealPlans] = useState<SavedMealPlan[]>([]);
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
 
   // Generate initial recommendations
@@ -122,18 +134,76 @@ export const FoodProvider: React.FC<FoodProviderProps> = ({ children }) => {
     }
   };
 
+  const saveMealPlan = (
+    name: string, 
+    mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', 
+    items: MealPlanItem[], 
+    photoUri?: string,
+    aiFeedback: string = "This meal plan is balanced and meets your nutritional needs!"
+  ) => {
+    // Calculate nutrition summary
+    const nutritionSummary = items.reduce(
+      (summary, item) => {
+        return {
+          totalCalories: summary.totalCalories + item.calories,
+          totalProtein: summary.totalProtein + item.protein,
+          totalCarbs: summary.totalCarbs + item.carbs,
+          totalFat: summary.totalFat + item.fat,
+        };
+      },
+      { totalCalories: 0, totalProtein: 0, totalCarbs: 0, totalFat: 0 }
+    );
+
+    const newMealPlan: SavedMealPlan = {
+      id: Date.now().toString(),
+      name,
+      date: new Date(),
+      mealType,
+      items,
+      photoUri,
+      aiFeedback,
+      nutritionSummary
+    };
+
+    setSavedMealPlans(prev => [newMealPlan, ...prev]);
+    return newMealPlan.id;
+  };
+
+  const getSavedMealPlans = () => {
+    return savedMealPlans;
+  };
+
+  const getSavedMealPlanById = (id: string) => {
+    return savedMealPlans.find(plan => plan.id === id);
+  };
+
+  const updateMealPlanPhoto = (mealPlanId: string, photoUri: string) => {
+    setSavedMealPlans(prev => 
+      prev.map(plan => 
+        plan.id === mealPlanId 
+          ? { ...plan, photoUri } 
+          : plan
+      )
+    );
+  };
+
   return (
     <FoodContext.Provider
       value={{
         foods,
         foodLogs,
         recommendations,
+        savedMealPlans,
         addFood,
         logFood,
         getFoodById,
         getFoodsByDate,
         getNutritionSummary,
         refreshRecommendations,
+        saveMealPlan,
+        getSavedMealPlans,
+        getSavedMealPlanById,
+        updateMealPlanPhoto
       }}
     >
       {children}

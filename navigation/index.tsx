@@ -8,6 +8,9 @@ import CameraScreen from '../screens/CameraScreen';
 import FoodDiaryScreen from '../screens/FoodDiaryScreen';
 import MealSuggestionsScreen from '../screens/MealSuggestionsScreen';
 import FoodDetailScreen from '../screens/FoodDetailScreen';
+import SavedMealPlansScreen from '../screens/SavedMealPlansScreen';
+import MealPlanDetailScreen from '../screens/MealPlanDetailScreen';
+import MealPlanCameraScreen from '../screens/MealPlanCameraScreen';
 
 // Define the types for our navigation
 export type RootStackParamList = {
@@ -16,11 +19,15 @@ export type RootStackParamList = {
   MealSuggestions: undefined;
   FoodDiary: undefined;
   FoodDetail: { foodId: string };
+  SavedMealPlans: undefined;
+  MealPlanDetail: { mealPlanId: string };
+  MealPlanCamera: { mealPlanId: string };
 };
 
 export type TabParamList = {
   Home: undefined;
   Diary: undefined;
+  MealPlans: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -35,6 +42,8 @@ function MainTabs() {
             return <Ionicons name={focused ? 'home' : 'home-outline'} size={size} color={color} />;
           } else if (route.name === 'Diary') {
             return <Ionicons name={focused ? 'book' : 'book-outline'} size={size} color={color} />;
+          } else if (route.name === 'MealPlans') {
+            return <Ionicons name={focused ? 'restaurant' : 'restaurant-outline'} size={size} color={color} />;
           }
           
           // Default icon as fallback
@@ -62,6 +71,11 @@ function MainTabs() {
         name="Diary" 
         component={FoodDiaryScreen} 
         options={{ title: 'Food History' }}
+      />
+      <Tab.Screen 
+        name="MealPlans" 
+        component={SavedMealPlansScreen} 
+        options={{ title: 'Meal Plans' }}
       />
     </Tab.Navigator>
   );
@@ -95,6 +109,24 @@ export default function Navigation() {
           name="FoodDetail" 
           component={FoodDetailScreen} 
           options={{ title: 'Food Details' }}
+        />
+        <Stack.Screen 
+          name="SavedMealPlans" 
+          component={SavedMealPlansScreen} 
+          options={{ title: 'Saved Meal Plans' }}
+        />
+        <Stack.Screen 
+          name="MealPlanDetail" 
+          component={MealPlanDetailScreen} 
+          options={{ title: 'Meal Plan Details' }}
+        />
+        <Stack.Screen 
+          name="MealPlanCamera" 
+          component={MealPlanCameraScreen} 
+          options={{ 
+            title: 'Take Photo of Meal',
+            headerShown: false
+          }}
         />
       </Stack.Navigator>
     </NavigationContainer>
